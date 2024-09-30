@@ -1,76 +1,50 @@
 import streamlit as st
-from tensorflow.keras.models import load_model
-from PIL import Image
-import numpy as np
 import requests
-import tempfile
-import os
+from keras.models import load_model
+import numpy as np
+from PIL import Image
+import cv2
 
-# Function to download the model from a cloud storage URL directly
-def download_and_load_model(url):
-    try:
-        # Create a temporary file to store the downloaded model
-        with tempfile.NamedTemporaryFile(suffix='.keras', delete=False) as temp_file:
-            model_path = temp_file.name
-            
-            # Download the model file from Google Drive
-            response = requests.get(url, stream=True)
-            response.raise_for_status()  # Raise an error for bad responses
-            with open(model_path, 'wb') as f:
-                for chunk in response.iter_content(chunk_size=8192):
-                    if chunk:
-                        f.write(chunk)
-        
-        st.write("Model downloaded successfully!")
+# Function to download and load the model
+def download_and_load_model(model_url):
+    response = requests.get(model_url)
+    model_path = "my_model.keras"
+    with open(model_path, "wb") as f:
+        f.write(response.content)
+    model = load_model(model_path)
+    return model
 
-        # Check if the file exists and is accessible
-        if os.path.exists(model_path):
-            # Load the model from the temporary file
-            model = load_model(model_path)
-            st.write("Model loaded successfully!")
-            return model
-        else:
-            st.error("Downloaded model file does not exist.")
-            return None
-    except requests.exceptions.RequestException as e:
-        st.error(f"Failed to download the model: {e}")
-        return None
-    except ValueError as ve:
-        st.error(f"Failed to load the model: {ve}")
-        return None
-    finally:
-        # Cleanup: Delete the temporary file
-        if os.path.exists(model_path):
-            os.remove(model_path)
-
-# Google Drive direct download URL for your model
-model_url = 'https://drive.google.com/uc?export=download&id=1AUCvNE1a3Pp6PSjKE66KnCiCnSC1am1h'
-
-# Directly download and load the model
-st.write("Downloading and loading model from cloud...")
+# URL of your model file
+model_url = "https://drive.google.com/uc?id=1AUCvNE1a3Pp6PSjKE66KnCiCnSC1am1h"  # Change to direct download link
 model = download_and_load_model(model_url)
 
-if model is not None:
-    # Function to process the uploaded image
-    def process_image(image):
-        img = Image.open(image)
-        img = img.resize((128, 128))  # Resize based on model input size
-        img_array = np.array(img) / 255.0  # Normalize the image
-        img_array = np.expand_dims(img_array, axis=0)  # Expand dimensions for batch input
-        return img_array
+# File uploader for image
+uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "jpeg", "png"])
 
-    # Streamlit file uploader to ask for an image to process
-    st.title("Upload an image for OCR processing")
-    uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "png", "jpeg"])
+if uploaded_file is not None:
+    # Load and display the image
+    image = Image.open(uploaded_file)
+    st.image(image, caption='Uploaded Image.', use_column_width=True)
 
-    if uploaded_file is not None:
-        st.image(uploaded_file, caption="Uploaded Image", use_column_width=True)
-        st.write("Processing the image...")
+    # Preprocess the image for OCR
+    image = image.convert('RGB')  # Ensure the image is in RGB format
+    image = image.resize((128, 32))  # Resize to the expected input size of the model
+    image_array = np.array(image) / 255.0  # Normalize the image
+    image_array = np.expand_dims(image_array, axis=0)  # Add batch dimension
 
-        # Preprocess the image and make predictions
-        image_array = process_image(uploaded_file)
-        prediction = model.predict(image_array)
-        
-        st.write(f"Prediction: {prediction}")
-else:
-    st.error("Model could not be loaded. Please check the download link.")
+    # Perform OCR
+    predictions = model.predict(image_array)
+    
+    # Decode predictions (Assuming your model outputs a sequence of class indices)
+    # Implement your decoding logic based on your model's output
+    # For example, you might have a character mapping
+    def decode_predictions(preds):
+        # Dummy decoding function, replace with your actual logic
+        # This function should convert the model output to human-readable text
+        return "Decoded text goes here"  # Replace with actual decoded output
+
+    ocr_output = decode_predictions(predictions)
+
+    # Display the OCR result
+    st.write("OCR Output:")
+    st.write(ocr_output)
