@@ -4,6 +4,7 @@ from PIL import Image
 import numpy as np
 import requests
 import tempfile
+import os
 
 # Function to download the model from a cloud storage URL directly
 def download_and_load_model(url):
@@ -19,16 +20,28 @@ def download_and_load_model(url):
                 for chunk in response.iter_content(chunk_size=8192):
                     if chunk:
                         f.write(chunk)
-            
-            st.write("Model downloaded successfully!")
+        
+        st.write("Model downloaded successfully!")
 
+        # Check if the file exists and is accessible
+        if os.path.exists(model_path):
             # Load the model from the temporary file
             model = load_model(model_path)
             st.write("Model loaded successfully!")
             return model
+        else:
+            st.error("Downloaded model file does not exist.")
+            return None
     except requests.exceptions.RequestException as e:
         st.error(f"Failed to download the model: {e}")
         return None
+    except ValueError as ve:
+        st.error(f"Failed to load the model: {ve}")
+        return None
+    finally:
+        # Cleanup: Delete the temporary file
+        if os.path.exists(model_path):
+            os.remove(model_path)
 
 # Google Drive direct download URL for your model
 model_url = 'https://drive.google.com/uc?export=download&id=1AUCvNE1a3Pp6PSjKE66KnCiCnSC1am1h'
