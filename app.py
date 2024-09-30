@@ -7,26 +7,35 @@ import requests
 
 # Function to download the model from a cloud storage URL
 def download_model(url, model_path):
-    response = requests.get(url)
-    with open(model_path, 'wb') as f:
-        f.write(response.content)
+    try:
+        response = requests.get(url, stream=True)
+        response.raise_for_status()  # Raise error for bad responses
+        with open(model_path, 'wb') as f:
+            for chunk in response.iter_content(chunk_size=8192):
+                if chunk:
+                    f.write(chunk)
+        st.write("Model downloaded successfully!")
+    except requests.exceptions.RequestException as e:
+        st.error(f"Failed to download the model: {e}")
 
 # Path to the model (local path after download)
-model_path = 'my_model.keras'
+model_path = './models/my_model.keras'
 
-# URL to the model (replace with your cloud storage URL)
-model_url = 'https://drive.google.com/file/d/1AUCvNE1a3Pp6PSjKE66KnCiCnSC1am1h/view?usp=drive_link'
+# Google Drive direct download URL for your model
+model_url = 'https://drive.google.com/uc?export=download&id=1AUCvNE1a3Pp6PSjKE66KnCiCnSC1am1h'
 
 # Download the model if it's not found locally
 if not os.path.exists(model_path):
     st.write("Downloading model from cloud...")
     download_model(model_url, model_path)
-    st.write("Model downloaded successfully!")
 
 # Load the model
-st.write("Loading model...")
-model = load_model(model_path)
-st.write("Model loaded successfully!")
+if os.path.exists(model_path):
+    st.write("Loading model...")
+    model = load_model(model_path)
+    st.write("Model loaded successfully!")
+else:
+    st.error(f"Model file not found at {model_path}. Please check the download link.")
 
 # Function to process the uploaded image
 def process_image(image):
