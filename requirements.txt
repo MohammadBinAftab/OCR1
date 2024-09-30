@@ -4,3 +4,5 @@ pillow
 numpy
 cv2
 opencv-python
+Keras
+opencv-python-headless
